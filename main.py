@@ -35,7 +35,7 @@ def get_age_group(age):
     else:
         return "70-"
 
-def correct_thresholds(raw, sex, age):
+def correct_thresdiaoholds(raw, sex, age):
     group = get_age_group(age)
     correction = correction_table[group][sex]
     return [raw[i] - correction[i] for i in range(6)]
@@ -49,13 +49,13 @@ def calc_results(left, right):
     right_weight = sum(right[:3]) * 0.3 + right[4] * 0.1
     both_high = sum(left[3:] + right[3:]) / 6
     return {
-        "左耳语频平均听阈": round(left_speech, 0),
-        "右耳语频平均听阈": round(right_speech, 0),
-        "左耳高频平均听阈": round(left_high, 0),
-        "右耳高频平均听阈": round(right_high, 0),
-        "左耳听阈加权": round(left_weight, 0),
-        "右耳听阈加权": round(right_weight, 0),
-        "双耳高频平均听阈": round(both_high, 0)
+        "左耳语频平均听阈": round(left_speech),
+        "右耳语频平均听阈": round(right_speech),
+        "左耳高频平均听阈": round(left_high),
+        "右耳高频平均听阈": round(right_high),
+        "左耳听阈加权": round(left_weight),
+        "右耳听阈加权": round(right_weight),
+        "双耳高频平均听阈": round(both_high)
     }
 
 class MySpinnerOption(SpinnerOption):
@@ -164,18 +164,24 @@ class HearingApp(App):
         try:
             sex = self.sex_spinner.text
             age = int(self.age_input.text)
-            left_raw = [float(ti.text) for ti in self.left_inputs]
-            right_raw = [float(ti.text) for ti in self.right_inputs]
+            left_raw = [int(ti.text) for ti in self.left_inputs]
+            right_raw = [int(ti.text) for ti in self.right_inputs]
             if len(left_raw) != 6 or len(right_raw) != 6:
                 self.result_label.text = '请输入6个频率数值'
                 return
-            left = left_raw 
-            right = right_raw
+
+            txt = f"左耳输入: {left_raw}右耳输入: {right_raw}\n"
+  
+                        
+            left = correct_thresdiaoholds(left_raw, sex, age)  
+            right = correct_thresdiaoholds(right_raw, sex, age)
+
             results = calc_results(left, right)
-            txt = f"左耳输入: {left}\n右耳输入: {right}\n"
+            txt += f"左耳输出: {left}右耳输出: {right}\n"
             for k, v in results.items():
                 txt += f"{k}: {v}\n"
             self.result_label.text = txt
+
         except Exception as e:
             self.result_label.text = f'输入有误: {e}'
 
