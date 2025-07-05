@@ -3,8 +3,13 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
-from kivy.uix.spinner import Spinner
+from kivy.uix.spinner import Spinner, SpinnerOption
 from kivy.uix.scrollview import ScrollView
+from kivy.core.text import LabelBase
+from kivy.config import Config
+
+LabelBase.register(name="SimHei", fn_regular="C:/Windows/Fonts/simhei.ttf")
+Config.set('kivy', 'default_font', ['SimHei', 'C:/Windows/Fonts/simhei.ttf', '', '', ''])
 
 correction_table = {
     "20-29": {"男": [0, 0, 0, 0, 0, 0], "女": [0, 0, 0, 0, 0, 0]},
@@ -44,52 +49,130 @@ def calc_results(left, right):
     right_weight = sum(right[:3]) * 0.3 + right[4] * 0.1
     both_high = sum(left[3:] + right[3:]) / 6
     return {
-        "左耳语频平均听阈": round(left_speech, 2),
-        "右耳语频平均听阈": round(right_speech, 2),
-        "左耳高频平均听阈": round(left_high, 2),
-        "右耳高频平均听阈": round(right_high, 2),
-        "左耳听阈加权": round(left_weight, 2),
-        "右耳听阈加权": round(right_weight, 2),
-        "双耳高频平均听阈": round(both_high, 2)
+        "左耳语频平均听阈": round(left_speech, 0),
+        "右耳语频平均听阈": round(right_speech, 0),
+        "左耳高频平均听阈": round(left_high, 0),
+        "右耳高频平均听阈": round(right_high, 0),
+        "左耳听阈加权": round(left_weight, 0),
+        "右耳听阈加权": round(right_weight, 0),
+        "双耳高频平均听阈": round(both_high, 0)
     }
+
+class MySpinnerOption(SpinnerOption):
+    def __init__(self, **kwargs):
+        kwargs.setdefault('font_name', 'SimHei')
+        super().__init__(**kwargs)
 
 class HearingApp(App):
     def build(self):
-        self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-        self.sex_spinner = Spinner(text='男', values=['男', '女'], size_hint=(1, None), height=44)
-        self.age_input = TextInput(hint_text='年龄', input_filter='int', multiline=False, size_hint=(1, None), height=44)
-        self.left_input = TextInput(hint_text='左耳6频率,用逗号分隔', multiline=False, size_hint=(1, None), height=44)
-        self.right_input = TextInput(hint_text='右耳6频率,用逗号分隔', multiline=False, size_hint=(1, None), height=44)
-        self.result_label = Label(text='', size_hint=(1, 1))
-        self.calc_btn = Button(text='计算', size_hint=(1, None), height=44)
+        from kivy.uix.floatlayout import FloatLayout
+        root = FloatLayout()
+        with root.canvas.before:
+            from kivy.graphics import Color, Rectangle
+            Color(0.95, 0.97, 1, 1)  # 这里设置你想要的背景色（淡蓝色，可调整）
+            self.bg_rect = Rectangle(pos=root.pos, size=root.size)
+        def update_bg_rect(instance, value):
+            self.bg_rect.pos = instance.pos
+            self.bg_rect.size = instance.size
+        root.bind(pos=update_bg_rect, size=update_bg_rect)
+
+        self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10, size_hint=(1, 1), pos_hint={'x': 0, 'y': 0})
+        self.sex_spinner = Spinner(
+            text='请选择',
+            values=['男', '女'],
+            size_hint=(0.9, None),
+            height=44,
+            option_cls=MySpinnerOption,
+            font_name='SimHei'
+        )
+        self.age_input = TextInput(
+            hint_text='年龄',
+            input_filter='int',
+            multiline=False,
+            size_hint=(0.9, None),
+            height=44,
+            font_name="SimHei",
+            input_type='number'
+        )
+        # 性别
+        sex_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
+        sex_box.add_widget(Label(text='性别:',width=50, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        sex_box.add_widget(self.sex_spinner)
+        self.layout.add_widget(sex_box)
+
+        # 年龄
+        age_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
+        age_box.add_widget(Label(text='年龄:',width=50, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        age_box.add_widget(self.age_input)
+        self.layout.add_widget(age_box)
+
+        # 左耳6频率
+        left_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
+        left_box.add_widget(Label(text='左耳6频率:',width=50, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        self.left_inputs = []
+        for i in range(6):
+            ti = TextInput(
+                hint_text=f'L{i+1}',
+                multiline=False,
+                size_hint=(0.15, 1),
+                font_name="SimHei",
+                input_type='number',
+                input_filter='int'
+            )
+            self.left_inputs.append(ti)
+            left_box.add_widget(ti)
+        self.layout.add_widget(left_box)
+
+        # 右耳6频率
+        right_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
+        right_box.add_widget(Label(text='右耳6频率:',width=500, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        self.right_inputs = []
+        for i in range(6):
+            ti = TextInput(
+                hint_text=f'R{i+1}',
+                multiline=False,
+                size_hint=(0.15, 1),
+                font_name="SimHei",
+                input_type='number',
+                input_filter='int'
+            )
+            self.right_inputs.append(ti)
+            right_box.add_widget(ti)
+        self.layout.add_widget(right_box)
+
+        self.result_label = Label(
+            text='',
+            size_hint=(1, 1),
+            font_name="SimHei",
+            color=(0, 0, 0, 1)
+        )
+        self.calc_btn = Button(
+            text='计算',
+            size_hint=(1, None),
+            height=44,
+            font_name="SimHei"
+        )
         self.calc_btn.bind(on_press=self.calculate)
-        self.layout.add_widget(Label(text='性别:', size_hint=(1, None), height=30))
-        self.layout.add_widget(self.sex_spinner)
-        self.layout.add_widget(Label(text='年龄:', size_hint=(1, None), height=30))
-        self.layout.add_widget(self.age_input)
-        self.layout.add_widget(Label(text='左耳6频率(500,1000,2000,3000,4000,6000Hz):', size_hint=(1, None), height=30))
-        self.layout.add_widget(self.left_input)
-        self.layout.add_widget(Label(text='右耳6频率(500,1000,2000,3000,4000,6000Hz):', size_hint=(1, None), height=30))
-        self.layout.add_widget(self.right_input)
         self.layout.add_widget(self.calc_btn)
         scroll = ScrollView(size_hint=(1, 1))
         scroll.add_widget(self.result_label)
         self.layout.add_widget(scroll)
-        return self.layout
+        root.add_widget(self.layout)
+        return root
 
     def calculate(self, instance):
         try:
             sex = self.sex_spinner.text
             age = int(self.age_input.text)
-            left_raw = list(map(float, self.left_input.text.split(',')))
-            right_raw = list(map(float, self.right_input.text.split(',')))
+            left_raw = [float(ti.text) for ti in self.left_inputs]
+            right_raw = [float(ti.text) for ti in self.right_inputs]
             if len(left_raw) != 6 or len(right_raw) != 6:
                 self.result_label.text = '请输入6个频率数值'
                 return
-            left = correct_thresholds(left_raw, sex, age)
-            right = correct_thresholds(right_raw, sex, age)
+            left = left_raw 
+            right = right_raw
             results = calc_results(left, right)
-            txt = f"左耳校正后: {left}\n右耳校正后: {right}\n"
+            txt = f"左耳输入: {left}\n右耳输入: {right}\n"
             for k, v in results.items():
                 txt += f"{k}: {v}\n"
             self.result_label.text = txt
