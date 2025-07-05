@@ -5,11 +5,13 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.spinner import Spinner, SpinnerOption
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.image import Image
+from kivy.uix.popup import Popup
 from kivy.core.text import LabelBase
 from kivy.config import Config
 
-LabelBase.register(name="SimHei", fn_regular="C:/Windows/Fonts/simhei.ttf")
-Config.set('kivy', 'default_font', ['SimHei', 'C:/Windows/Fonts/simhei.ttf', '', '', ''])
+# 安卓系统使用默认中文字体，不需要注册特定字体
+# 安卓系统自带 DroidSansFallback 或 NotoSansCJK 等中文字体
 
 correction_table = {
     "20-29": {"男": [0, 0, 0, 0, 0, 0], "女": [0, 0, 0, 0, 0, 0]},
@@ -60,7 +62,7 @@ def calc_results(left, right):
 
 class MySpinnerOption(SpinnerOption):
     def __init__(self, **kwargs):
-        kwargs.setdefault('font_name', 'SimHei')
+        # 安卓系统会自动使用默认中文字体
         super().__init__(**kwargs)
 
 class HearingApp(App):
@@ -77,13 +79,29 @@ class HearingApp(App):
         root.bind(pos=update_bg_rect, size=update_bg_rect)
 
         self.layout = BoxLayout(orientation='vertical', padding=10, spacing=10, size_hint=(1, 1), pos_hint={'x': 0, 'y': 0})
+        
+        # 添加图片控件
+        self.image_widget = Image(
+            source='image.png',
+            size_hint=(0.9, None),
+            height=100,
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        self.image_widget.bind(on_touch_down=self.on_image_click)
+        
+        # 图片容器
+        image_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=120)
+        image_box.add_widget(Label(text='参考图:', width=80, size_hint=(0.1, 1), color=(0, 0, 0, 1)))
+        image_box.add_widget(self.image_widget)
+        self.layout.add_widget(image_box)
+
         self.sex_spinner = Spinner(
             text='请选择',
             values=['男', '女'],
             size_hint=(0.9, None),
             height=44,
-            option_cls=MySpinnerOption,
-            font_name='SimHei'
+            option_cls=MySpinnerOption
         )
         self.age_input = TextInput(
             hint_text='年龄',
@@ -91,31 +109,29 @@ class HearingApp(App):
             multiline=False,
             size_hint=(0.9, None),
             height=44,
-            font_name="SimHei",
             input_type='number'
         )
         # 性别
         sex_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
-        sex_box.add_widget(Label(text='性别:',width=50, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        sex_box.add_widget(Label(text='性别:',width=50, size_hint=(0.1, 1), color=(0, 0, 0, 1)))
         sex_box.add_widget(self.sex_spinner)
         self.layout.add_widget(sex_box)
 
         # 年龄
         age_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
-        age_box.add_widget(Label(text='年龄:',width=50, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        age_box.add_widget(Label(text='年龄:',width=50, size_hint=(0.1, 1), color=(0, 0, 0, 1)))
         age_box.add_widget(self.age_input)
         self.layout.add_widget(age_box)
 
         # 左耳6频率
         left_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
-        left_box.add_widget(Label(text='左耳6频率:',width=50, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        left_box.add_widget(Label(text='左耳6频率:',width=50, size_hint=(0.1, 1), color=(0, 0, 0, 1)))
         self.left_inputs = []
         for i in range(6):
             ti = TextInput(
                 hint_text=f'L{i+1}',
                 multiline=False,
                 size_hint=(0.15, 1),
-                font_name="SimHei",
                 input_type='number',
                 input_filter='int'
             )
@@ -125,14 +141,13 @@ class HearingApp(App):
 
         # 右耳6频率
         right_box = BoxLayout(orientation='horizontal', size_hint=(1, None), height=44)
-        right_box.add_widget(Label(text='右耳6频率:',width=500, size_hint=(0.1, 1), font_name="SimHei", color=(0, 0, 0, 1)))
+        right_box.add_widget(Label(text='右耳6频率:',width=500, size_hint=(0.1, 1), color=(0, 0, 0, 1)))
         self.right_inputs = []
         for i in range(6):
             ti = TextInput(
                 hint_text=f'R{i+1}',
                 multiline=False,
                 size_hint=(0.15, 1),
-                font_name="SimHei",
                 input_type='number',
                 input_filter='int'
             )
@@ -143,14 +158,12 @@ class HearingApp(App):
         self.result_label = Label(
             text='',
             size_hint=(1, 1),
-            font_name="SimHei",
             color=(0, 0, 0, 1)
         )
         self.calc_btn = Button(
             text='计算',
             size_hint=(1, None),
-            height=44,
-            font_name="SimHei"
+            height=44
         )
         self.calc_btn.bind(on_press=self.calculate)
         self.layout.add_widget(self.calc_btn)
@@ -159,6 +172,49 @@ class HearingApp(App):
         self.layout.add_widget(scroll)
         root.add_widget(self.layout)
         return root
+
+    def on_image_click(self, instance, touch):
+        """处理图片点击事件"""
+        if instance.collide_point(*touch.pos):
+            self.show_image_popup()
+            return True
+        return False
+
+    def show_image_popup(self):
+        """显示放大的图片弹窗"""
+        # 创建弹窗内容
+        content = BoxLayout(orientation='vertical')
+        
+        # 创建放大的图片
+        popup_image = Image(
+            source='image.png',
+            size_hint=(1, 1),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+        
+        # 创建关闭按钮
+        close_btn = Button(
+            text='关闭',
+            size_hint=(1, None),
+            height=50
+        )
+        
+        content.add_widget(popup_image)
+        content.add_widget(close_btn)
+        
+        # 创建弹窗
+        popup = Popup(
+            title='噪声听力图',
+            content=content,
+            size_hint=(0.8, 0.8)
+        )
+        
+        # 绑定关闭按钮事件
+        close_btn.bind(on_press=popup.dismiss)
+        
+        # 显示弹窗
+        popup.open()
 
     def calculate(self, instance):
         try:
